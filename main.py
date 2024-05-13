@@ -101,7 +101,7 @@ class BaselineRecommender(Recommender):
 def evaluation(model, test_data):
     # evaluate the model on the test data
     right_predictions = 0
-    i = 0
+    i = 1
     last_perc = 0.05
     test_len = len(test_data)
     print("Test data: ", test_len)
@@ -113,6 +113,9 @@ def evaluation(model, test_data):
         label = sequence[1]
         if label in recommendations:
             right_predictions += 1
+
+        if i % 10 == 0:
+            print(f"Accuracy so far: {right_predictions / i * 100} %")
         i += 1
 
     print(f"Accuracy: {right_predictions / len(test_data) * 100} %")
@@ -140,12 +143,14 @@ class SessionBasedRecommender(Recommender):
         similar_sessions = []
         events_set = session_row_to_set(events)
         for session_id, items in self.session_item_matrix.items():
-            if items.intersection(events_set):
-                similar_sessions.append(session_id)
+            intersection_len = len(items.intersection(events_set))
+            if intersection_len:
+                similar_sessions.append((session_id, intersection_len))
 
         clicked_items = []
-        for session_id in similar_sessions:
-            clicked_items.extend(set(self.session_item_matrix[session_id]) - events_set)
+        for session_id, weight in similar_sessions:
+            extend_by = list(set(self.session_item_matrix[session_id]) - events_set)
+            clicked_items.extend(extend_by * weight)
 
         item_counts = Counter(clicked_items)
         predicted_items = [item for item, _ in item_counts.most_common(self.top_n)]
